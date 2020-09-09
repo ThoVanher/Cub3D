@@ -1,114 +1,98 @@
 #include "../includes/cub3d.h"
 #include <stdio.h>
-#include <stdlib.h>
 
-void	get_resolution(t_info *info, char *line, int i)
+void	save_sprite(t_env *env, int i, int j, int *n)
 {
-	while (line[i] == ' ')
-		i++;
-	info->resol_x = ft_atoi(&line[i]);
-	while (ft_isdigit(line[i]))
-		i++;
-	while (line[i] == ' ')
-		i++;
-	info->resol_y = ft_atoi(&line[i]);
+	env->sprites[*n].x = j + 0.5;
+	env->sprites[*n].y = i + 0.5;
+	env->info->nb_sprite++;
+	(*n)++;
 }
 
-void	get_path_tex(t_info *info, char *line, int i)
+int		get_nb_sprite_and_pos(t_env *env)
 {
-	char a;
-	char b;
-
-	a = line[i];
-	b = line[i + 1];
-	i += 2;
-	while (line[i] == ' ')
-		i++;
-	if (a == 'N' && b == 'O')
-		info->north_tex = ft_substr(line, i, 1000);
-	if (a == 'S' && b == 'O')
-		info->south_tex = ft_substr(line, i, 1000);
-	if (a == 'E' && b == 'A')
-		info->east_tex = ft_substr(line, i, 1000);
-	if (a == 'W' && b == 'E')
-		info->west_tex = ft_substr(line, i, 1000);
-	if (a == 'S' && b == ' ')
-		info->sprite_tex = ft_substr(line, i, 1000);
-}
-
-void	get_color(int tab[3], char *line, int i)
-{
-	while (line[i] == ' ')
-		i++;
-	tab[0] = ft_atoi(&line[i]);
-	while (ft_isdigit(line[i]))
-		i++;
-	while (!ft_isdigit(line[i]))
-		i++;
-	tab[1] = ft_atoi(&line[i]);
-	while (ft_isdigit(line[i]))
-		i++;
-	while (!ft_isdigit(line[i]))
-		i++;
-	tab[2]  = ft_atoi(&line[i]);
-	if (tab[0] < 0 || tab[0] > 255 || tab[1] < 0 || tab[1] > 255 || tab[2] < 0 
-			|| tab[2] > 255)
-		tab[0] = -1;
-}
-
-int	parse_map(t_info *info, char *line, int fd)
-{
-	char *res;
-	char *tmp;
-	int len;
-
-	len = ft_strlen(line);
-	res = line;
-	tmp = res;
-	res = ft_strjoin(res, "%");
-	free(tmp);
-	while (get_next_line(fd, &line))
-	{
-		tmp = res;
-		res = ft_strjoin(res, line);
-		free (tmp);
-		tmp = res;
-		res = ft_strjoin(res, "%");
-		free (tmp);
-		free(line);
-	}
-	info->map = ft_split(res, '%');
-	free(res);
-	free(line);
-	return (0);
-}
-
-char *parse_info(t_info *info, int fd)
-{
-	char *line;
 	int i;
-	int map;
+	int j;
+	int n;
 
 	i = 0;
-	map = 0;
-	while (!map)
+	n = 0;
+	while (env->info->map[i])
 	{
-		get_next_line(fd, &line); 
-		i = 0;
-		while (line[i] && line[i] == ' ')
-			i++;
-		if (line[i] == 'R')
-			get_resolution(info, line, i + 1);
-		if (line[i] == 'N' || line[i] == 'S' || line[i] == 'E' || line[i] == 'W')
-			get_path_tex(info, line, i);
-		if (line[i] == 'F')
-			get_color(info->color_f, line, i + 1);
-		if (line[i] == 'C')
-			get_color(info->color_c, line, i + 1);
-		if (line[i] == '1' || line[i] == '2' || line[i] == '0')
-			map = 1;
-		if (!map)
-			free(line);
+		j = 0;
+		while (env->info->map[i][j])
+		{
+			if (!env->error && env->info->nb_sprite == 500)
+			{
+				error_messages_parsing(env, 6);
+				return (EXIT);
+			}
+			if (env->info->map[i][j] == '2')
+				save_sprite(env, i, j, &n);
+			j++;
+		}
+		i++;
 	}
-	return (line);
+	return (1);
+}
+
+int		get_width_eight_of_sprite(t_env *env)
+{
+	int fd;
+	char *line;
+	int i;
+
+	if ((fd = open(env->info->sprite_tex, O_RDONLY)) < 0)
+	{
+		error_messages_syst(env, 8);
+		return (EXIT);
+	}
+	line = "start";
+	i = 0;
+	while (line[0] != '"')
+		get_next_line(fd, &line);
+	while (!ft_isdigit(line[i]))
+		i++;
+	env->info->tex_width = ft_atoi(&line[i]);
+	while (ft_isdigit(line[i]))
+		i++;
+	while (line[i] == ' ')
+		i++;
+	env->info->tex_height = ft_atoi(&line[i]);
+	free(line);
+	if (close(fd) == -1)
+		error_messages_syst(env, 9);
+	return (1);
+}
+
+void	verif_resolution(t_info *info)
+{
+if (info->resol_x < 150 || info->resol_x > 1200)
+	info->resol_x = 1200;
+if (info->resol_y < 150 || info->resol_y > 675)
+	info->resol_y = 675;
+}
+
+int	parse(char *map, t_env *env)
+{
+	char *first_map_line;
+	int fd;
+
+	if ((fd = open(map, O_RDONLY)) < 0)
+	{
+		error_messages_syst(env, 10);
+		return (EXIT);
+	}
+	first_map_line = parse_info(env, fd);
+	parse_map(env->info, first_map_line, fd);
+	check_all_infos(env);
+	get_nb_sprite_and_pos(env);
+	verif_resolution(env->info);
+	if (!env->error)
+		get_width_eight_of_sprite(env);
+	if (close(fd) == -1)
+		error_messages_syst(env, 11); 
+	if (env->error)
+		return (EXIT);
+	return (SUCCESS);
 }

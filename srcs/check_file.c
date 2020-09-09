@@ -1,21 +1,14 @@
 #include "../includes/cub3d.h"
 #include <stdio.h>
 
-void	ft_putchar_fd(char c, int fd)
+int	check_file_extension(char *file)
 {
-	write(fd, &c, 1);
-}
+	int len;
 
-void	ft_putstr_fd(char *s, int fd)
-{
-	int i;
-
-	i = 0;
-	while (s[i])
-	{
-		ft_putchar_fd(s[i], fd);
-		i++;
-	}
+	len = ft_strlen(file);
+	if (ft_strncmp(&file[len - 4], ".cub", 4) != 0)
+		return (EXIT);
+	return (SUCCESS);
 }
 
 int check_map_closed(t_info *info, t_player *player, int i, int j)
@@ -38,10 +31,10 @@ int check_map_closed(t_info *info, t_player *player, int i, int j)
 		player->y = (double)(i) + 0.5;
 		info->map[i][j] = '0';
 		player->nb_dir++;
-		if (player->nb_dir > 1)
+		if (player->nb_dir != 1)
 			return (-1);
 	}
-	return (1);
+	return (SUCCESS);
 }
 
 int check_map(t_info *info, t_player *player)
@@ -58,41 +51,40 @@ int check_map(t_info *info, t_player *player)
 	{
 		while (map[i][++j])
 		{
-			if (map[i][j] != '1' && map[i][j] != '0' && map[i][j] != '2' && map[i][j] != 'N' && map[i][j] != 'S' && map[i][j] != 'E' && map[i][j] != 'W' && map[i][j] != ' ')
+			if (map[i][j] != '1' && map[i][j] != '0' && map[i][j] != '2' &&
+					map[i][j] != 'N' && map[i][j] != 'S' && map[i][j] != 'E' &&
+					map[i][j] != 'W' && map[i][j] != ' ')
 				return (2);
 			if (map[i][j] != '1' && map[i][j] != ' ' &&
 					(ret = check_map_closed(info, player, i, j)) != 1)
 				return (ret);
 		}
-		if (j > info->length_x)
-			info->length_x = j;
 		j = -1;
 	}
-	info->length_y = i;
-	return (1);
+	if (!player->nb_dir)
+		return (-1);
+	return (SUCCESS);
 }
 
-int	parsing_errors(t_info *info, t_player *player)
+int	check_all_infos(t_env *env)
 {
 	int ret;
-
-	ret = check_map(info, player);
-	if (info->color_c[0] == -1 || info->color_f[0] == -1)
+	if (env->error)
 	{
-		ft_putstr_fd("Error\nCeiling and/or floor color(s) invalid\nEnter RGB values between 0 and 255\n", 1);
-		ret = -2;
+		error_messages_parsing(env, 1);
+		return (EXIT);
 	}
-	if (!ret)
-		ft_putstr_fd("Error\nMap not closed\n", 1);
-	if (ret == 2)
-		ft_putstr_fd("Error\nInvalid character in map\n", 1);
-	if (ret == -1)
-		ft_putstr_fd("Error\nTwo (or more) start position\n", 1);
-	if (ret != 1)
-	{
-		free_info(info);
-		free(player);
-		return (0);
-	}
-	return (1);
+	ret = check_map(env->info, env->player);
+	if (!env->error && (env->info->color_c[0] == -1 || 
+				env->info->color_f[0] == -1))
+		error_messages_parsing(env, 2);
+	if (!env->error && ret == 0)
+		error_messages_parsing(env, 3);
+	if (!env->error && ret == 2)
+		error_messages_parsing(env, 4);
+	if (!env->error && ret == -1)
+		error_messages_parsing(env, 5);
+	if (env->error)
+		return (EXIT);
+	return (SUCCESS);
 }

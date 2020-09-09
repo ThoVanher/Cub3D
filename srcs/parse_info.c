@@ -1,107 +1,117 @@
 #include "../includes/cub3d.h"
-#include "../mlx/mlx.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-void	free_info(t_info *info)
+void	get_resolution(t_info *info, char *line, int i)
 {
-	int i = 0;
-	while (info->map[i])
-	{
-		free(info->map[i]);
+	while (line[i] == ' ')
 		i++;
-	}
-	free (info->map);
-	free(info->north_tex);
-	free(info->south_tex);
-	free(info->east_tex);
-	free(info->west_tex);
-	free(info->sprite_tex);
-	free(info);
+	info->resol_x = ft_atoi(&line[i]);
+	while (ft_isdigit(line[i]))
+		i++;
+	while (line[i] == ' ')
+		i++;
+	info->resol_y = ft_atoi(&line[i]);
 }
 
-int	init_game(t_env *env)
+void	get_path_tex(t_info *info, char *line, int i)
 {
-	env->win->mlx_ptr = mlx_init();
-	env->win->mlx_win = mlx_new_window(env->win->mlx_ptr, env->info->resol_x, env->info->resol_y, "Cub3D");
-	init_dir_player_and_cam(env->cam, env->player);
-	get_nb_sprite_and_pos(env);
-	if (!(init_textures(env->info, env->win, env->textures)))
-		return (0);
-	mlx_hook(env->win->mlx_win, 2, 1, key_press, env->move);
-	mlx_hook(env->win->mlx_win, 3, 2, key_release, env->move);
-	mlx_loop_hook(env->win->mlx_ptr, &create_image, env);
-	mlx_loop(env->win->mlx_ptr);
-	return (1);
+	char a;
+	char b;
+
+	a = line[i];
+	b = line[i + 1];
+	if (a == 'S' && b == ' ')
+		i++;
+	else 
+		i += 2;
+	while (line[i] == ' ')
+		i++;
+	if (a == 'N' && b == 'O')
+		info->north_tex = ft_substr(line, i, 1000);
+	if (a == 'S' && b == 'O')
+		info->south_tex = ft_substr(line, i, 1000);
+	if (a == 'E' && b == 'A')
+		info->east_tex = ft_substr(line, i, 1000);
+	if (a == 'W' && b == 'E')
+		info->west_tex = ft_substr(line, i, 1000);
+	if (a == 'S' && b == ' ')
+		info->sprite_tex = ft_substr(line, i, 1000);
 }
 
-int	parse(char *map, t_info *info, t_player *player)
+void	get_color(int tab[3], char *line, int i)
 {
-	char *first_map_line;
-	int fd;
-
-	fd = open(map, O_RDONLY);
-	first_map_line = parse_info(info, fd);
-	parse_map(info, first_map_line, fd);
-	if (!parsing_errors(info, player))
-		return (0);
-	return (1);
+	while (line[i] == ' ')
+		i++;
+	tab[0] = ft_atoi(&line[i]);
+	while (ft_isdigit(line[i]))
+		i++;
+	while (!ft_isdigit(line[i]))
+		i++;
+	tab[1] = ft_atoi(&line[i]);
+	while (ft_isdigit(line[i]))
+		i++;
+	while (!ft_isdigit(line[i]))
+		i++;
+	tab[2]  = ft_atoi(&line[i]);
+	if (tab[0] < 0 || tab[0] > 255 || tab[1] < 0 || tab[1] > 255 || tab[2] < 0 
+			|| tab[2] > 255)
+		tab[0] = -1;
 }
 
-int	malloc_environnement2(t_env *env)
+int	parse_map(t_info *info, char *line, int fd)
 {
-	t_window	*win;
-	t_move		*move;
+	char *res;
+	char *res2;
+	char *tmp;
+	int len;
 
-	if (!(win = (t_window *)malloc(sizeof(t_window))) || !(move = (t_move *)malloc(sizeof(t_move))))
+	len = ft_strlen(line);
+	res = line;
+	tmp = res;
+	res = ft_strjoin(res, "%");
+	free(tmp);
+	while (get_next_line(fd, &line))
 	{
-		ft_putstr_fd("Error\nMalloc failed", 1);
-		return (0);
+		tmp = res;
+		res2 = ft_strtrim(line, ' ');
+		res = ft_strjoin(res, res2);
+		free (tmp);
+		tmp = res;
+		res = ft_strjoin(res, "%");
+		free (tmp);
+		free(res2);
 	}
-	ft_bzero(win, sizeof(t_window));
-	ft_bzero(move, sizeof(t_move));
-	env->win = win;
-	env->move = move;
-	return (1);
-}
-
-t_env	*malloc_environnement()
-{
-	t_env		*env;
-	t_info		*info;
-	t_player	*player;
-	t_cam		*cam;
-	t_wall		*wall;
-
-
-	if(!(info = (t_info*)malloc(sizeof(t_info))) || 
-			!(player = (t_player *)malloc(sizeof(t_player))) || 
-			!(cam = (t_cam *)malloc(sizeof(t_cam))) || 
-			!(wall = (t_wall *)malloc(sizeof(t_wall))) ||
-			!(env = (t_env*)malloc(sizeof(t_env))))
-	{
-		ft_putstr_fd("Error\nMalloc failed", 1);
-		return (0);
-	}
-	ft_bzero(info, sizeof(t_info));
-	ft_bzero(player, sizeof(t_player));
-	ft_bzero(cam, sizeof(t_cam));
-	ft_bzero(wall, sizeof(t_wall));
-	env->info = info;
-	env->player = player;
-	env->cam = cam;
-	env->wall = wall;
-	malloc_environnement2(env);
-	return (env);
-}
-
-int main(int argc, char **argv)
-{
-	t_env		*env;
-	if (argc != 2)
-		return (0);
-	if (!(env = malloc_environnement()) || !(parse(argv[1], env->info, env->player)))
-		return (0);
-	init_game(env);
+	info->map = ft_split(res, '%');
+	free(res);
+	free(line);
 	return (0);
-} 
+}
+
+char *parse_info(t_env *env, int fd)
+{
+	char *lne;
+	int i;
+
+	while ((!env->map) && get_next_line(fd, &lne))
+	{ 
+		i = 0;
+		while (lne[i] && lne[i] == ' ')
+			i++;
+		if (lne[i] == 'R')
+			get_resolution(env->info, lne, i + 1);
+		if (lne[i] == 'N' || lne[i] == 'S' || lne[i] == 'E' || lne[i] == 'W')
+			get_path_tex(env->info, lne, i);
+		if (lne[i] == 'F')
+			get_color(env->info->color_f, lne, i + 1);
+		if (lne[i] == 'C')
+			get_color(env->info->color_c, lne, i + 1);
+		if (lne[i] == '1' || lne[i] == '2' || lne[i] == '0')
+			env->map = 1;
+		if (!env->map)
+			free(lne);
+	}
+	if (!env->map)
+		env->error = 1;
+	return (ft_strtrim(lne, ' '));
+}

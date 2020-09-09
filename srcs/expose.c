@@ -46,6 +46,11 @@ int		create_image(t_env *env)
 	raycast(env, image);
 	sprite(env, image);
 	free(env->zbuffer);
+	if (env->save)
+	{
+		save(env, image);
+		return(0);
+	}
 	env->player->step = 0.07;
 	env->cam->rot_speed = 0.05;
 	move_player(env->player, env->info, env->move, env->cam);

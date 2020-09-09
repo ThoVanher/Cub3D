@@ -2,7 +2,7 @@
 
 int key_press(int key_code, t_move *move)
 {
-if (key_code == 53)
+	if (key_code == 53)
 		move->esc = 1;
 	else if (key_code == 13)
 		move->forward = 1;
@@ -16,7 +16,7 @@ if (key_code == 53)
 		move->turn_left = 1;
 	else if (key_code == 0)
 		move->turn_right = 1;
-return (0);
+	return (0);
 }
 
 int key_release(int key_code, t_move *move)
@@ -35,5 +35,5 @@ int key_release(int key_code, t_move *move)
 		move->turn_left = 0;
 	else if (key_code == 0)
 		move->turn_right = 0;
-return (0);
+	return (0);
 }

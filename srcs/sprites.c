@@ -1,4 +1,5 @@
 #include "../includes/cub3d.h"
+#include <stdio.h>
 
 void	sort_sprites(int *sprite_order, double *sprite_distance, int sprite_nb)
 {
@@ -9,7 +10,7 @@ void	sort_sprites(int *sprite_order, double *sprite_distance, int sprite_nb)
 	i = 0;
 	while (i < sprite_nb - 1)
 	{
-		if (sprite_distance[i] > sprite_distance[i + 1])
+		if (sprite_distance[i] < sprite_distance[i + 1])
 		{
 			tmp_dist = sprite_distance[i];
 			sprite_distance[i] = sprite_distance[i + 1];
@@ -39,7 +40,7 @@ void	dist_player_sprites(t_env *env, int *sprite_order, double *sprite_distance)
 	sort_sprites(sprite_order, sprite_distance, env->info->nb_sprite);
 }
 
-void	get_sprite_info(t_sprite_info *s_i, t_sprite *sprites, int *sprite_order, t_env *e)
+void	size_sprite(t_sprite_info *s_i, t_sprite *sprites, int *sprite_order, t_env *e)
 {
 	s_i->x = sprites[sprite_order[s_i->i]].x - e->player->x;
 	s_i->y = sprites[sprite_order[s_i->i]].y - e->player->y;
@@ -74,42 +75,46 @@ int is_black(int texx, int texy, t_textures textures)
 		return (0);
 }
 
-void stripe_pixel_in_image(int stripe, t_sprite_info *s_i, t_env *env, char *image)
+void put_stripe_in_image(t_env *env, char *image, t_sprite_info *s_i, int y, int stripe)
 {
 	int res;
 	int res2;
+	int d;
 
-	res = 4*stripe + 4*env->info->resol_x*s_i->texy;
-	res2 = 4*s_i->texx + 4*64*s_i->texy;
-	image[res] = env->textures[4].im[res2];
-	image[res + 1] = env->textures[4].im[res2 + 1];
-	image[res + 2] = env->textures[4].im[res2 + 2];
-	image[res + 3] = env->textures[4].im[res2 + 3];
+	d = y * 256 - env->info->resol_y * 128 + s_i->height * 128;
+	s_i->texy = ((d * env->info->tex_height) / s_i->height) / 256;
+	if (!is_black(s_i->texx, s_i->texy, env->textures[4]))
+	{
+		res = y * env->info->resol_x * 4 + stripe * 4;
+		res2 = s_i->texy * env->textures[4].size_line + s_i->texx * env->textures[4].bpp/8;
+		image[res] = env->textures[4].im[res2];
+		image[res + 1] = env->textures[4].im[res2 + 1];
+		image[res + 2] = env->textures[4].im[res2 + 2];
+		image[res + 3] = env->textures[4].im[res2 + 3];
+	}
 }
 
-void	draw_sprite(t_env *env, t_sprite_info *s_i, char *image)
+void	draw_sprite(t_env *env, t_sprite_info *s_i, char *image, int *sprite_order)
 {
 	int stripe;
 	int y;
 	int d;
+	t_sprite	*sprite;
 
 	stripe = s_i->drawstart_x;
 	while (stripe < s_i->drawend_x)
 	{
-		s_i->texx = (int)((256 * (stripe - (-s_i->width / 2 + s_i->screenx)) * 64 / s_i->width) / 256);
-		y = s_i->drawstart_y;
-		if (s_i->transformy > 0 && stripe > 0 && stripe < env->info->resol_x && s_i->transformy < env->zbuffer[stripe])
+		if (s_i->transformy > 0  && s_i->transformy < env->zbuffer[stripe])
 		{
+			y = s_i->drawstart_y;
+			s_i->texx = (int)((256 * (stripe - (-s_i->width / 2 + s_i->screenx)) * env->info->tex_width / s_i->width) / 256);
 			while (y < s_i->drawend_y)
 			{
-				d = y * 256 - env->info->resol_y * 128 + s_i->height * 128;
-				s_i->texy = ((d * 64) / s_i->height) / 256;
-				if (!is_black(s_i->texx, s_i->texy, env->textures[4]))
-					stripe_pixel_in_image(stripe, s_i, env, image);
+				put_stripe_in_image(env, image, s_i, y, stripe);
 				y++;
 			}
 		}
-		stripe++; 
+		stripe++;
 	}
 }
 
@@ -122,12 +127,12 @@ void	sprite(t_env *env, char *image)
 
 	i = 0;
 	dist_player_sprites(env, sprite_order, sprite_distance);
-	s_i.i = env->info->nb_sprite - 1;
-	while (s_i.i >= 0)
+	s_i.i = 0;
+	while (s_i.i < env->info->nb_sprite)
 	{
-		get_sprite_info(&s_i, env->sprites, sprite_order, env);
-		draw_sprite(env, &s_i, image);
-		s_i.i--;
+		size_sprite(&s_i, env->sprites, sprite_order, env);
+		draw_sprite(env, &s_i, image, sprite_order);
+		s_i.i++;
 	}
 }
 

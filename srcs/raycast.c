@@ -78,7 +78,7 @@ void	hit_a_wall(t_info *info, t_player *player, t_cam *cam, t_wall *wall)
 			wall->side = 1;
 		}
 		if (info->map[wall->wall_y][wall->wall_x] != '0' && 
-			info->map[wall->wall_y][wall->wall_x] != '2')
+				info->map[wall->wall_y][wall->wall_x] != '2')
 			hit = 1; 
 	}
 }
@@ -105,7 +105,7 @@ void	dist_to_wall(t_env *env, t_cam *cam, t_wall *wall, int i)
 		wall->distance = (wall->wall_y - env->player->y + (1 - cam->step_y) / 2) / cam->ray_y;
 		wall->orientation = 'N';
 	}
-env->zbuffer[i] = wall->distance;
+	env->zbuffer[i] = wall->distance;
 }
 
 void	eight_wall_perspective(t_info *info, t_wall *wall, t_cam *cam)
@@ -122,12 +122,28 @@ void	eight_wall_perspective(t_info *info, t_wall *wall, t_cam *cam)
 		wall->end = h - 1;
 }
 
+void	choose_textures(t_env *env, char *image, int i)
+{
+	if (env->wall->side == 0 && env->cam->ray_x > 0)
+		draw_tex_column(image, env, env->textures[3], i);
+	else if (env->wall->side == 0 && env->cam->ray_x <= 0)
+		draw_tex_column(image, env, env->textures[2], i);
+	else if (env->wall->side == 1 && env->cam->ray_y > 0)
+		draw_tex_column(image, env, env->textures[1], i);
+	else if (env->wall->side == 1 && env->cam->ray_y <= 0)
+		draw_tex_column(image, env, env->textures[0], i);
+}
+
 int	raycast(t_env *env, char *image)
 {
 	int i;
 
 	i = 0;
-	env->zbuffer = (double *)malloc(sizeof(double) * env->info->resol_x);
+	if (!(env->zbuffer = (double *)malloc(env->info->resol_x * sizeof(double))))
+	{
+		error_messages_syst(env , 7);
+		return (EXIT);
+	}
 	while (i <= env->info->resol_x)
 	{
 		env->cam->cam_x = ((2 * (double)i) / (double)env->info->resol_x - 1);
@@ -137,15 +153,8 @@ int	raycast(t_env *env, char *image)
 		dist_to_wall(env, env->cam, env->wall, i);
 		eight_wall_perspective(env->info, env->wall, env->cam);
 		get_tex_x(env->wall, env->player, env->cam);
-		if (env->wall->side == 0 && env->cam->ray_x > 0)
-			draw_tex_column(image, env, env->textures[3], i);
-		else if (env->wall->side == 0 && env->cam->ray_x <= 0)
-			draw_tex_column(image, env, env->textures[2], i);
-		else if (env->wall->side == 1 && env->cam->ray_y > 0)
-			draw_tex_column(image, env, env->textures[1], i);
-		else if (env->wall->side == 1 && env->cam->ray_y <= 0)
-			draw_tex_column(image, env, env->textures[0], i);
+		choose_textures(env, image, i);
 		i++;
 	}
-	return (0);
+	return (SUCCESS);
 }

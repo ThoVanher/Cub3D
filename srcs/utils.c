@@ -86,3 +86,32 @@ void	*ft_bzero(void *b, size_t len)
 	}
 	return (b);
 }
+
+char *ft_strtrim(char *line, char c)
+{
+	int i;
+	int j;
+	char *res;
+
+	i = 0;
+	j = 0;
+	while (line[i])
+	{
+		if (line[i] == ' ')
+			j++;
+		i++;
+	}
+	if (!(res = (char *)malloc(sizeof(char) * (ft_strlen(line) - j + 1))))
+		return (0);
+	i = 0;
+	j = 0;
+	while (line[i])
+	{
+		if (line[i] != ' ')
+			res[j++] = line[i];
+		i++;
+	}
+	res[j] ='\0';
+		free(line);
+	return (res);
+}
